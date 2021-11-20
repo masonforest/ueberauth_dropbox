@@ -14,7 +14,10 @@ defmodule Ueberauth.Strategy.Dropbox do
 
       config :ueberauth, Ueberauth,
         providers: [
-          dropbox: { Ueberauth.Strategy.Dropbox, [] }
+          dropbox: { Ueberauth.Strategy.Dropbox, [
+            # Add the following for applications which require offline access
+            # token_access_type: :offline
+          ] }
         ]
 
   Then include the configuration for dropbox.
@@ -76,6 +79,7 @@ defmodule Ueberauth.Strategy.Dropbox do
   """
   def handle_request!(conn) do
     opts = [redirect_uri: callback_url(conn)]
+    |> with_token_access_type(conn)
     |> with_state_param(conn)
     module = option(conn, :oauth2_module)
     redirect!(conn, apply(module, :authorize_url!, [opts]))
@@ -186,6 +190,14 @@ defmodule Ueberauth.Strategy.Dropbox do
         set_errors!(conn, [error("Oauth2", reason)])
       _ ->
         set_errors!(conn, [error("error", "Some error occured")])
+    end
+  end
+
+  defp with_token_access_type(opts, conn) do
+    if option(conn, :token_access_type) == :offline do
+      opts |> Keyword.put(:token_access_type, "offline")
+    else
+      opts
     end
   end
 
